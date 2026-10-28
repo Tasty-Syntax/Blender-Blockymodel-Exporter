@@ -1,0 +1,65 @@
+name: Build extension
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write   # needed to attach the zip to a release on tags
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      BLENDER_VERSION: "5.2.3"   # matches the version the add-on is tested with
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install libraries Blender needs
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxi6 libxrender1 libxkbcommon0 libxkbcommon-x11-0 libsm6 libxext6 libxfixes3 libgl1
+
+      - name: Cache Blender
+        id: blender-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/blender
+          key: blender-${{ env.BLENDER_VERSION }}
+
+      - name: Download Blender
+        if: steps.blender-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/blender
+          MAJOR_MINOR="${BLENDER_VERSION%.*}"
+          curl -fsSL "https://download.blender.org/release/Blender${MAJOR_MINOR}/blender-${BLENDER_VERSION}-linux-x64.tar.xz" \
+            | tar -xJ -C ~/blender --strip-components=1
+
+      # Copy only what the add-on needs, so tests, examples and CI files stay out of the zip
+      - name: Stage extension files
+        run: |
+          STAGE=build/hytale_blockymodel_exporter
+          mkdir -p "$STAGE"
+          cp -r blender_manifest.toml __init__.py modules LICENSE README.md THIRD_PARTY_LICENSES.md "$STAGE"/
+          find "$STAGE" -name __pycache__ -prune -exec rm -rf {} +
+
+      - name: Build extension zip
+        run: |
+          mkdir -p dist
+          ~/blender/blender -b --factory-startup --command extension build \
+            --source-dir build/hytale_blockymodel_exporter --output-dir dist
+
+      - name: List zip contents
+        run: unzip -l dist/*.zip
+
+      - name: Upload zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-zip
+          path: dist/*.zip
+
+      - name: Attach zip to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip

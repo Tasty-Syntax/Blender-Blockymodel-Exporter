@@ -1,0 +1,23 @@
+schema_version = "1.0.0"
+
+id = "hytale_blockymodel_exporter"
+version = "1.0.0"
+name = "Hytale Blockymodel Exporter"
+tagline = "Export cubes and panes as Hytale .blockymodel files"
+maintainer = "TastySyntax"
+type = "add-on"
+
+website = "https://github.com/MDufJokeAIR/Blender-Hytale-Converter"
+
+tags = ["Import-Export", "Game Engine"]
+
+blender_version_min = "5.2.0"
+
+license = ["SPDX:GPL-3.0-or-later"]
+copyright = [
+  "2026 TastySyntax",
+  "2017 lixinthu"
+]
+
+[permissions]
+files = "Write .blockymodel and texture PNG files to disk"
