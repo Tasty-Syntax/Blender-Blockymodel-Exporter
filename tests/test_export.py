@@ -107,9 +107,11 @@ class PanelExport(unittest.TestCase):
         self.scene.hytale_export_name = self.path
         self.attempted = self.addon.modules.export_ui._EXPORT_ATTEMPTED
         self.attempted[0] = False
+        self.scene.hytale_export_texture = True
 
     def tearDown(self):
         self.dir.cleanup()
+        self.scene.hytale_export_texture = True
         self.scene.hytale_export_overwrite = False
         self.scene.hytale_export_overwrite_texture = False
 
@@ -161,6 +163,21 @@ class PanelExport(unittest.TestCase):
         self.press_export()
         with open(self.texture, "rb") as f:
             self.assertEqual(f.read(8), PNG_SIGNATURE)
+
+    def test_export_texture_off_writes_no_texture(self):
+        self.scene.hytale_export_texture = False
+        self.press_export()
+        self.assertTrue(os.path.exists(self.path))
+        self.assertFalse(os.path.exists(self.texture))
+
+    def test_export_texture_off_ignores_an_existing_texture(self):
+        with open(self.texture, "wb") as f:
+            f.write(b"keep")
+        self.scene.hytale_export_texture = False
+        self.press_export()   # no Overwrite Existing needed: the texture is not written
+        self.assertTrue(os.path.exists(self.path))
+        with open(self.texture, "rb") as f:
+            self.assertEqual(f.read(), b"keep")
 
     def test_unchecking_overwrite_also_unchecks_overwrite_texture(self):
         self.scene.hytale_export_overwrite = True

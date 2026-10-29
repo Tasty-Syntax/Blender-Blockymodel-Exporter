@@ -105,7 +105,7 @@ class ExporterUi(unittest.TestCase):
         ns = SimpleNamespace(layout=layout, collection="", source_collection="__selected__",
                              export_selected_only=True, apply_modifiers=True, model_format="prop",
                              double_sided_panes=True, export_texture=False, texture_size_mode="MULTIPLE_32",
-                             per_face_uvs=True)
+                             per_face_uvs=True, uv_source="AUTO", padding=1)
         self.addon.modules.exporter.EXPORT_SCENE_OT_blockymodel.draw(ns, bpy.context)
         self.assertEqual(layout.panel.call_count, 3)
 

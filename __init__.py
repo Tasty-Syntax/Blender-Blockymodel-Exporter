@@ -22,7 +22,7 @@ No third-party dependencies: only Blender's bundled Python is used.
 
 import bpy
 
-from .modules import export_ui, exporter, pixel_grid_ui, properties
+from .modules import export_ui, exporter, item_ui, pixel_grid_ui, properties, uv_ui
 
 classes = (
     exporter.EXPORT_SCENE_OT_blockymodel,
@@ -30,9 +30,12 @@ classes = (
     pixel_grid_ui.HYTALE_OT_snap_to_pixel_grid,
     pixel_grid_ui.HYTALE_OT_set_grid_snapping,
     pixel_grid_ui.HYTALE_PT_pixel_grid,
+    uv_ui.HYTALE_OT_generate_uvs,
+    uv_ui.HYTALE_OT_fit_texture,
     export_ui.HYTALE_OT_choose_export_file,
     export_ui.HYTALE_OT_export_model,
     export_ui.HYTALE_PT_export,
+    item_ui.HYTALE_PT_item,
 )
 
 
@@ -41,9 +44,11 @@ def register():
         bpy.utils.register_class(cls)
     bpy.types.TOPBAR_MT_file_export.append(exporter.menu_func_export)
     properties.register_properties()
+    item_ui.register_properties()
 
 
 def unregister():
+    item_ui.unregister_properties()
     properties.unregister_properties()
     bpy.types.TOPBAR_MT_file_export.remove(exporter.menu_func_export)
     for cls in reversed(classes):

@@ -113,17 +113,9 @@ class ExportResult:
     def __init__(self):
         self.nodes = []
         self.node_count = 0
-        self.uv_requests = []   # (node, uv_faces, color)
+        self.uv_requests = []   # (node, uv_faces, obj, part)
         self.warnings = []
         self.non_integer = 0
-
-
-def _object_color(obj):
-    mat = obj.active_material if hasattr(obj, "active_material") else None
-    if mat is not None and hasattr(mat, "diffuse_color"):
-        c = mat.diffuse_color
-        return tuple(int(max(0.0, min(1.0, c[i])) * 255) for i in range(3))
-    return (160, 160, 160)
 
 
 def _collection_chain(root, obj):
@@ -215,7 +207,7 @@ def build_model(objects, units, depsgraph, double_sided_panes, root):
                 part = parts[0]
                 part_q = _child_orientation(part)
                 piece_offset, uv = _shape_from_part(node, part, units, double_sided_panes)
-                res.uv_requests.append((node, uv, _object_color(obj)))
+                res.uv_requests.append((node, uv, obj, part))
                 node["orientation"] = _quat_json(quat_to_hytale(rel_rot) @ part_q)
                 node["shape"]["offset"] = _vec_json(part_q.inverted() @ piece_offset)
                 check_size(size_to_hytale(part.size) * units, obj.name)
@@ -224,7 +216,7 @@ def build_model(objects, units, depsgraph, double_sided_panes, root):
                 plain = [p for p in parts if p.kind == 'BOX' and p.rot is None]
                 if plain:
                     own_offset, uv = _shape_from_part(node, plain[0], units, double_sided_panes)
-                    res.uv_requests.append((node, uv, _object_color(obj)))
+                    res.uv_requests.append((node, uv, obj, plain[0]))
                     check_size(size_to_hytale(plain[0].size) * units, obj.name)
                 extra_parts = [p for p in parts if p not in plain[:1]]
 
@@ -240,7 +232,7 @@ def build_model(objects, units, depsgraph, double_sided_panes, root):
             _, uv = _shape_from_part(child, sub_part, units, double_sided_panes)
             check_size(size_to_hytale(part.size) * units, obj.name)
             child["shape"]["settings"]["isStaticBox"] = True
-            res.uv_requests.append((child, uv, _object_color(obj)))
+            res.uv_requests.append((child, uv, obj, part))
             kids.append(child)
 
         for c in children.get(obj, []):

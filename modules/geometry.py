@@ -2,6 +2,8 @@
 
 from mathutils import Matrix, Quaternion, Vector
 
+from .constants import UV_MAP
+
 
 # ============================================================================
 # Coordinate conversion  Blender (Z-up) -> Hytale (Y-up), a proper rotation
@@ -34,6 +36,9 @@ class Part:
         self.flat_axis = flat_axis    # 0/1/2 for panes (Blender axis)
         self.clean = clean            # False -> vertices weren't exactly on a box
         self.rot = rot                # Matrix, piece tilted inside the mesh (None = axis-aligned)
+        # One entry per polygon: (normal, [(loop index, position, uv or None)]), with the
+        # normal and positions in the piece's own frame and positions relative to its centre
+        self.loops = []
 
 
 def _loose_parts(mesh):
@@ -107,7 +112,17 @@ def _tilt_frame(mesh, polys, scale):
     return Matrix((t1, n2, n1)).transposed()
 
 
-def _analyse_part(mesh, vert_ids, polys, scale):
+def _scaled_normal(p, scale, frame):
+    """Polygon normal in scaled space (normals transform with inverse scale),
+    in the piece's own frame when it is tilted."""
+    n = p.normal
+    sn = Vector([n[i] / (scale[i] if abs(scale[i]) > 1e-9 else 1.0) for i in range(3)])
+    if frame is not None:
+        sn = frame.transposed() @ sn
+    return sn
+
+
+def _analyse_part(mesh, vert_ids, polys, scale, uv_data=None):
     cos = [_scaled_co(mesh, i, scale) for i in vert_ids]
     mn, mx, eps, clean = _fit_box(cos)
     if max(mx - mn) <= 1e-6:
@@ -122,6 +137,7 @@ def _analyse_part(mesh, vert_ids, polys, scale):
             f_mn, f_mx, f_eps, f_clean = _fit_box(fitted)
             if f_clean and max(f_mx - f_mn) > 1e-6:
                 mn, mx, eps, clean = f_mn, f_mx, f_eps, True
+                cos = fitted
             else:
                 frame = None
 
@@ -130,6 +146,16 @@ def _analyse_part(mesh, vert_ids, polys, scale):
     if len(thin) >= 2:
         return None   # a line or point, nothing to export
     center = (mn + mx) * 0.5
+
+    co_of = dict(zip(vert_ids, cos))
+    loops = []
+    for p in polys:
+        corners = []
+        for li in p.loop_indices:
+            uv = tuple(uv_data[li].uv) if uv_data is not None else None
+            corners.append((li, co_of[mesh.loops[li].vertex_index] - center, uv))
+        loops.append((_scaled_normal(p, scale, frame), corners))
+
     if frame is not None:
         center, rot = frame @ center, frame.to_quaternion()
     else:
@@ -140,20 +166,19 @@ def _analyse_part(mesh, vert_ids, polys, scale):
         # Which way does the pane face? Average polygon normals (scaled space,
         # in the piece's own frame when it is tilted)
         total = 0.0
-        for p in polys:
-            n = p.normal
-            # normals transform with inverse scale
-            sn = Vector([n[i] / (scale[i] if abs(scale[i]) > 1e-9 else 1.0) for i in range(3)])
-            if frame is not None:
-                sn = frame.transposed() @ sn
+        for p, (sn, _corners) in zip(polys, loops):
             total += sn[axis] * p.area if hasattr(p, "area") else sn[axis]
         sign = -1 if total < 0 else 1
-        return Part(center, size, 'PANE', normal_sign=sign, flat_axis=axis, clean=clean, rot=rot)
-    return Part(center, size, 'BOX', clean=clean, rot=rot)
+        part = Part(center, size, 'PANE', normal_sign=sign, flat_axis=axis, clean=clean, rot=rot)
+    else:
+        part = Part(center, size, 'BOX', clean=clean, rot=rot)
+    part.loops = loops
+    return part
 
 
 def mesh_parts(obj, depsgraph):
-    """Return the cubes/panes of a mesh object in local, scaled Blender space."""
+    """Return the cubes/panes of a mesh object in local, scaled Blender space.
+    Each part also records its polygons' loops and their UV_MAP coordinates."""
     _loc, _rot, scale = obj.matrix_world.decompose()
     if depsgraph is not None:
         obj_eval = obj.evaluated_get(depsgraph)
@@ -163,9 +188,11 @@ def mesh_parts(obj, depsgraph):
         mesh = obj.data
         cleanup = None
     try:
+        uv_layer = mesh.uv_layers.get(UV_MAP)
+        uv_data = uv_layer.data if uv_layer is not None else None
         parts = []
         for verts, polys in _loose_parts(mesh):
-            part = _analyse_part(mesh, verts, polys, scale)
+            part = _analyse_part(mesh, verts, polys, scale, uv_data)
             if part is not None:
                 parts.append(part)
     finally:

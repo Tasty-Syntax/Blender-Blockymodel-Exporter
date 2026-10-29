@@ -8,6 +8,7 @@ from bpy.types import Operator, Panel
 from bpy_extras.io_utils import ExportHelper
 
 from .exporter import EXPORT_SCENE_OT_blockymodel
+from .uv_ui import draw_uv_section
 
 
 class HYTALE_OT_choose_export_file(Operator, ExportHelper):
@@ -55,8 +56,9 @@ class HYTALE_OT_export_model(Operator):
             filepath += ".blockymodel"
         # The texture is written next to the model with the same base name.
         texture = os.path.splitext(filepath)[0] + ".png"
+        targets = (filepath, texture) if scene.hytale_export_texture else (filepath,)
         if not scene.hytale_export_overwrite:
-            existing = [os.path.basename(p) for p in (filepath, texture) if os.path.exists(p)]
+            existing = [os.path.basename(p) for p in targets if os.path.exists(p)]
             if existing:
                 self.report({'ERROR'}, f"{', '.join(existing)} already exists. "
                                        "Enable Overwrite Existing to replace it")
@@ -71,7 +73,8 @@ class HYTALE_OT_export_model(Operator):
                 filepath=filepath,
                 collection=collection.name if collection else "",
                 model_format=scene.hytale_format,
-                export_texture=not keep_texture,
+                uv_source=scene.hytale_uv_source,
+                export_texture=scene.hytale_export_texture and not keep_texture,
             )
         except RuntimeError as e:
             # Blender raises an ERROR report from a Python call as RuntimeError ("Error: ...").
@@ -93,12 +96,17 @@ class HYTALE_PT_export(Panel):
         layout = self.layout
         attempted = _EXPORT_ATTEMPTED[0]
         layout.prop(scene, "hytale_export_collection")
+        layout.separator()
+        draw_uv_section(layout, scene)
+        layout.separator()
         row = layout.row(align=True)
         row.alert = attempted and not scene.hytale_export_name.strip()
         row.prop(scene, "hytale_export_name")
         row.operator(HYTALE_OT_choose_export_file.bl_idname, text="", icon='FILEBROWSER')
+        layout.prop(scene, "hytale_export_texture")
         layout.prop(scene, "hytale_export_overwrite")
         row = layout.row()
-        row.enabled = scene.hytale_export_overwrite
+        row.enabled = scene.hytale_export_overwrite and scene.hytale_export_texture
         row.prop(scene, "hytale_export_overwrite_texture")
+        layout.separator()
         layout.operator(HYTALE_OT_export_model.bl_idname, icon='EXPORT')

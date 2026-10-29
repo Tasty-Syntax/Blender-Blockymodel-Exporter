@@ -55,22 +55,37 @@ class WritePng(unittest.TestCase):
         _, _, rows = read_png(self.path)
         self.assertTrue(all(px == (0, 0, 0, 0) for row in rows for px in row))
 
-    def test_face_is_painted_with_shaded_color(self):
+    def test_face_is_painted_with_its_color(self):
         texture.write_png(self.path, 32, 32, [(4, 6, 8, 5, "front", (200, 100, 50))])
         _, _, rows = read_png(self.path)
-        k = texture.FACE_SHADE["front"]
-        expected = (int(200 * k), int(100 * k), int(50 * k), 255)
+        expected = (200, 100, 50, 255)
         self.assertEqual(rows[6][4], expected)
         self.assertEqual(rows[10][8], expected)
         self.assertEqual(rows[5][4], (0, 0, 0, 0))   # just above the rectangle (y 6..10, x 4..11)
         self.assertEqual(rows[11][4], (0, 0, 0, 0))  # just below it
         self.assertEqual(rows[6][12], (0, 0, 0, 0))  # just right of it
 
-    def test_each_face_gets_its_own_shade(self):
-        paint = [(0, 0, 4, 4, "top", (100, 100, 100)), (4, 0, 4, 4, "bottom", (100, 100, 100))]
-        texture.write_png(self.path, 32, 32, paint)
+    def test_rectangles_are_clipped_to_the_texture(self):
+        texture.write_png(self.path, 8, 8, [(-2, 6, 4, 4, "front", (1, 2, 3))])
         _, _, rows = read_png(self.path)
-        self.assertNotEqual(rows[0][0], rows[0][4])
+        self.assertEqual(rows[7][1], (1, 2, 3, 255))
+        self.assertEqual(rows[7][2], (0, 0, 0, 0))
+
+
+class Pastel(unittest.TestCase):
+    def test_same_key_same_color(self):
+        self.assertEqual(texture.pastel("1:front"), texture.pastel("1:front"))
+
+    def test_different_keys_differ(self):
+        colors = {texture.pastel(f"{i}:{f}") for i in range(4)
+                  for f in ("front", "back", "left", "right", "top", "bottom")}
+        self.assertGreater(len(colors), 20)
+
+    def test_colors_are_light_and_soft(self):
+        for i in range(50):
+            r, g, b = texture.pastel(str(i))
+            self.assertGreaterEqual(max(r, g, b), 230)   # light
+            self.assertGreaterEqual(min(r, g, b), 150)   # not saturated
 
 
 if __name__ == "__main__":
