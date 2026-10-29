@@ -35,9 +35,9 @@
       <sub>A lantern built from nine boxes, wearing the placeholder texture made by <b>Generate UVs</b>.</sub>
     </td>
     <td width="50%" valign="top">
-      <img src="docs/images/lantern-texture.png" alt="The lantern's 96 by 96 pixel texture: every face is its own pastel rectangle, packed into rows" width="100%">
+      <img src="docs/images/lantern-texture.png" style="image-rendering: pixelated;" alt="The lantern's 64 by 64 pixel texture: every face is its own pastel rectangle, packed into rows" width="100%">
       <br>
-      <sub>Its 96×96 texture, one pastel island per face, ready to rearrange in the UV Editor.
+      <sub>Its 64x64 texture, one pastel island per face, ready to rearrange in the UV Editor.
       The empty space below is what <b>Fit Texture</b> is for.</sub>
     </td>
   </tr>
