@@ -24,7 +24,8 @@ def install():
     if IN_BLENDER:
         return
     props = _module("bpy.props", **{name: mock.Mock() for name in
-                                    ("BoolProperty", "EnumProperty", "IntProperty", "PointerProperty", "StringProperty")})
+                                    ("BoolProperty", "EnumProperty", "FloatVectorProperty", "IntProperty",
+                                     "PointerProperty", "StringProperty")})
     types_mod = _module("bpy.types", Operator=_Base, Panel=_Base, FileHandler=_Base)
     path = _module("bpy.path", abspath=lambda p: p)
     bpy = _module("bpy", types=types_mod, props=props, path=path,

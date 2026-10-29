@@ -21,6 +21,7 @@
   <a href="#the-export-panel">Export panel</a> ·
   <a href="#editable-uvs">Editable UVs</a> ·
   <a href="#pixel-grid-lock">Pixel grid lock</a> ·
+  <a href="#item-panel">Item panel</a> ·
   <a href="#development">Development</a>
 </p>
 
@@ -195,6 +196,19 @@ Optional helpers in the **Pixel Grid Lock** panel to keep sizes on whole pixels:
 > Only sizes are snapped, not positions. The base mesh is changed (modifiers are not applied
 > first), each side is scaled about the piece's centre, unclean pieces are skipped, and panes
 > keep their flat side. A snap also changes every object that shares the mesh.
+
+## Item panel
+
+A copy of Blender's **Item → Transform** panel for the active object, with lengths in Hytale
+pixels of the **Format** (1 m = 32 px for props, 64 px for characters) instead of metres:
+
+| Mode | Shows |
+|---|---|
+| **Object Mode** | **Location** and **Dimensions** in pixels, **Rotation** (in its rotation mode), **Mode** and **Scale**, with the same axis locks as Blender. |
+| **Edit Mode** | The **Median** (or **Vertex**) of the selected vertices in pixels, in **Global** or **Local** space. |
+
+Editing a value changes the real transform, so it is undoable and works with everything else.
+Axes stay Blender's (Z up).
 
 ## Development
 
