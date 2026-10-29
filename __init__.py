@@ -22,7 +22,7 @@ No third-party dependencies: only Blender's bundled Python is used.
 
 import bpy
 
-from .modules import export_ui, exporter, pixel_grid_ui, properties
+from .modules import export_ui, exporter, pixel_grid_ui, properties, uv_ui
 
 classes = (
     exporter.EXPORT_SCENE_OT_blockymodel,
@@ -30,6 +30,8 @@ classes = (
     pixel_grid_ui.HYTALE_OT_snap_to_pixel_grid,
     pixel_grid_ui.HYTALE_OT_set_grid_snapping,
     pixel_grid_ui.HYTALE_PT_pixel_grid,
+    uv_ui.HYTALE_OT_generate_uvs,
+    uv_ui.HYTALE_OT_fit_texture,
     export_ui.HYTALE_OT_choose_export_file,
     export_ui.HYTALE_OT_export_model,
     export_ui.HYTALE_PT_export,

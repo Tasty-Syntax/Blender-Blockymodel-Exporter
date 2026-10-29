@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "hytale_blockymodel_exporter"
-version = "1.0.0"
+version = "1.1.0"
 name = "Hytale Blockymodel Exporter"
 tagline = "Export cubes and panes as Hytale .blockymodel files"
 maintainer = "TastySyntax"

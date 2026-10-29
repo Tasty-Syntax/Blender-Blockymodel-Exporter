@@ -5,14 +5,14 @@ import os
 import time
 
 import bpy
-from bpy.props import BoolProperty, EnumProperty, StringProperty
+from bpy.props import BoolProperty, EnumProperty, IntProperty, StringProperty
 from bpy.types import FileHandler, Operator
 from bpy_extras.io_utils import ExportHelper
 
 from .constants import MAX_NODES, UNITS_PER_BLOCK
 from .model import build_model
 from .texture import write_png
-from .uvs import _cube_seams_ok, layout_uvs
+from .uvs import UV_PADDING, _cube_seams_ok, layout_uvs, read_mesh_uvs
 
 
 SELECTED_ITEM = "__selected__"
@@ -76,7 +76,7 @@ class EXPORT_SCENE_OT_blockymodel(Operator, ExportHelper):
 
     export_texture: BoolProperty(
         name="Export Texture",
-        description="Write a placeholder texture (<file>.png) with every face laid out, "
+        description="Write a placeholder texture (<file>.png) with every UV island in its own pastel color, "
                     "ready to paint over",
         default=True,
     )
@@ -91,10 +91,29 @@ class EXPORT_SCENE_OT_blockymodel(Operator, ExportHelper):
         default='MULTIPLE_32',
     )
 
+    uv_source: EnumProperty(
+        name="UVs",
+        description="Where the texture layout comes from",
+        items=[
+            ('AUTO', "Generate at Export", "Pack every face automatically on each export"),
+            ('MESH', "From UV Map",
+             "Use the 'Hytale' UV map made with Generate UVs and arranged in the UV Editor"),
+        ],
+        default='AUTO',
+    )
+
     per_face_uvs: BoolProperty(
         name="Per-Face UVs",
         description="Mark every cube edge as a seam so each face gets its own UV island",
         default=True,
+    )
+
+    padding: IntProperty(
+        name="Island Padding",
+        description="Empty pixels kept between UV islands",
+        default=UV_PADDING,
+        min=0,
+        soft_max=16,
     )
 
     source_collection: EnumProperty(
@@ -106,6 +125,7 @@ class EXPORT_SCENE_OT_blockymodel(Operator, ExportHelper):
 
     def invoke(self, context, event):
         self.model_format = context.scene.hytale_format
+        self.uv_source = context.scene.hytale_uv_source
         return super().invoke(context, event)
 
     def _gather_objects(self, context):
@@ -147,15 +167,21 @@ class EXPORT_SCENE_OT_blockymodel(Operator, ExportHelper):
         if out_dir and not os.path.isdir(out_dir):
             os.makedirs(out_dir, exist_ok=True)
 
-        per_face = False
-        if self.per_face_uvs:
-            try:
-                per_face = _cube_seams_ok()
-                if not per_face:
-                    res.warnings.append("cube seams did not separate faces; box UVs used")
-            except Exception as e:
-                res.warnings.append(f"per-face UVs unavailable ({e}); box UVs used")
-        tex_w, tex_h, paint = layout_uvs(res.uv_requests, self.texture_size_mode, per_face)
+        if self.uv_source == 'MESH':
+            tex_w, tex_h = context.scene.hytale_uv_width, context.scene.hytale_uv_height
+            paint, uv_warnings = read_mesh_uvs(res.uv_requests, tex_w, tex_h)
+            res.warnings.extend(uv_warnings)
+        else:
+            per_face = False
+            if self.per_face_uvs:
+                try:
+                    per_face = _cube_seams_ok()
+                    if not per_face:
+                        res.warnings.append("cube seams did not separate faces; box UVs used")
+                except Exception as e:
+                    res.warnings.append(f"per-face UVs unavailable ({e}); box UVs used")
+            tex_w, tex_h, paint = layout_uvs(res.uv_requests, self.texture_size_mode, per_face,
+                                             self.padding)
         tex_note = ""
         if self.export_texture and paint:
             png_path = os.path.splitext(filepath)[0] + ".png"
@@ -217,8 +243,14 @@ class EXPORT_SCENE_OT_blockymodel(Operator, ExportHelper):
         header.prop(self, "export_texture", text="")
         header.label(text="Texture", icon='TEXTURE')
         if body:
-            body.prop(self, "texture_size_mode")
-            body.prop(self, "per_face_uvs")
+            body.prop(self, "uv_source")
+            if self.uv_source == 'AUTO':
+                body.prop(self, "texture_size_mode")
+                body.prop(self, "per_face_uvs")
+                body.prop(self, "padding")
+            else:
+                scene = context.scene
+                body.label(text=f"Texture {scene.hytale_uv_width} x {scene.hytale_uv_height} px")
             if not self.export_texture:
                 body.label(text="UVs are still laid out", icon='INFO')
 
